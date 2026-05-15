@@ -13,7 +13,9 @@ export function DataTable({ rows }: { rows: WeatherRow[] }) {
     dir: "asc",
   });
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 25;
+  // Hard cap on rendered rows for very large datasets
+  const RENDER_CAP = 100;
 
   const filtered = useMemo(() => {
     const term = q.toLowerCase();
