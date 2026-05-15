@@ -9,6 +9,9 @@ export type WeatherRow = {
   condition: string;
 };
 
+export const MAX_CSV_BYTES = 10 * 1024 * 1024; // 10MB
+export const CHART_MAX_POINTS = 400;
+
 const conditions = ["Sunny", "Cloudy", "Rainy", "Stormy", "Clear", "Foggy", "Windy"];
 
 function seasonOf(monthIdx: number): WeatherRow["season"] {
@@ -18,7 +21,6 @@ function seasonOf(monthIdx: number): WeatherRow["season"] {
   return "Autumn";
 }
 
-// Deterministic pseudo-random
 function rand(seed: number) {
   const x = Math.sin(seed) * 10000;
   return x - Math.floor(x);
@@ -81,31 +83,95 @@ export function buildSeasonal(rows: WeatherRow[]) {
   }));
 }
 
-export function parseCSV(text: string): WeatherRow[] {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+/**
+ * Downsample by averaging within fixed-size buckets.
+ * Preserves visual trend while keeping point count manageable.
+ */
+export function downsampleRows(rows: WeatherRow[], maxPoints = CHART_MAX_POINTS): WeatherRow[] {
+  if (rows.length <= maxPoints) return rows;
+  const bucketSize = Math.ceil(rows.length / maxPoints);
+  const out: WeatherRow[] = [];
+  for (let i = 0; i < rows.length; i += bucketSize) {
+    const slice = rows.slice(i, i + bucketSize);
+    const n = slice.length;
+    const avg = (k: keyof WeatherRow) =>
+      +(slice.reduce((s, r) => s + (r[k] as number), 0) / n).toFixed(1);
+    const mid = slice[Math.floor(n / 2)];
+    out.push({
+      date: mid.date,
+      day: mid.day,
+      temp: avg("temp"),
+      humidity: avg("humidity"),
+      pressure: avg("pressure"),
+      wind: avg("wind"),
+      season: mid.season,
+      condition: mid.condition,
+    });
+  }
+  return out;
+}
+
+function parseRowsBatch(lines: string[], startIdx: number, headers: string[]): WeatherRow[] {
   const idx = (k: string) => headers.findIndex((h) => h.includes(k));
   const di = idx("date");
   const ti = idx("temp");
   const hi = idx("humid");
   const pi = idx("press");
   const wi = idx("wind");
-  return lines.slice(1).map((line, i) => {
+  const out: WeatherRow[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
     const cols = line.split(",");
-    const dateStr = di >= 0 ? cols[di] : new Date(2025, 0, i + 1).toISOString().slice(0, 10);
-    const d = new Date(dateStr);
-    return {
-      date: dateStr,
-      day: isNaN(d.getTime())
-        ? `Day ${i + 1}`
-        : d.toLocaleDateString("en", { month: "short", day: "numeric" }),
-      temp: +parseFloat(cols[ti] ?? "0"),
-      humidity: +parseFloat(cols[hi] ?? "50"),
-      pressure: +parseFloat(cols[pi] ?? "1013"),
-      wind: +parseFloat(cols[wi] ?? "10"),
-      season: seasonOf(isNaN(d.getTime()) ? 0 : d.getMonth()),
+    const dateStr = di >= 0 ? cols[di]?.trim() : "";
+    const d = dateStr ? new Date(dateStr) : new Date(NaN);
+    const valid = !isNaN(d.getTime());
+    out.push({
+      date: valid ? dateStr : `Row ${startIdx + i + 1}`,
+      day: valid
+        ? d.toLocaleDateString("en", { month: "short", day: "numeric" })
+        : `R${startIdx + i + 1}`,
+      temp: +parseFloat(cols[ti] ?? "0") || 0,
+      humidity: +parseFloat(cols[hi] ?? "50") || 0,
+      pressure: +parseFloat(cols[pi] ?? "1013") || 0,
+      wind: +parseFloat(cols[wi] ?? "10") || 0,
+      season: seasonOf(valid ? d.getMonth() : 0),
       condition: "Imported",
-    };
-  });
+    });
+  }
+  return out;
+}
+
+export function parseCSV(text: string): WeatherRow[] {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  return parseRowsBatch(lines.slice(1), 0, headers);
+}
+
+/**
+ * Async, non-blocking CSV parser. Yields back to the event loop between
+ * batches so the UI thread stays responsive for huge files.
+ */
+export async function parseCSVAsync(
+  text: string,
+  onProgress?: (pct: number) => void,
+  batchSize = 2000,
+): Promise<WeatherRow[]> {
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  const dataLines = lines.slice(1);
+  const total = dataLines.length;
+  const out: WeatherRow[] = [];
+
+  for (let i = 0; i < total; i += batchSize) {
+    const batch = dataLines.slice(i, i + batchSize);
+    out.push(...parseRowsBatch(batch, i, headers));
+    onProgress?.(Math.min(100, Math.round(((i + batch.length) / total) * 100)));
+    // Yield to the browser so UI stays interactive
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+  onProgress?.(100);
+  return out;
 }
