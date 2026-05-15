@@ -13,7 +13,9 @@ export function DataTable({ rows }: { rows: WeatherRow[] }) {
     dir: "asc",
   });
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 25;
+  // Hard cap on rendered rows for very large datasets
+  const RENDER_CAP = 100;
 
   const filtered = useMemo(() => {
     const term = q.toLowerCase();
@@ -31,7 +33,8 @@ export function DataTable({ rows }: { rows: WeatherRow[] }) {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const slice = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const start = (safePage - 1) * pageSize;
+  const slice = filtered.slice(start, Math.min(start + pageSize, start + RENDER_CAP));
 
   const toggleSort = (key: SortKey) =>
     setSort((s) => ({ key, dir: s.key === key && s.dir === "asc" ? "desc" : "asc" }));
