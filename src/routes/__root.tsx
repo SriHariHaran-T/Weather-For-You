@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "TCE Weather  Portal" },
+      { name: "description", content: "Weather Insights Hub is a responsive web application for interactive weather data visualization and analysis." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "TCE Weather  Portal" },
+      { property: "og:description", content: "Weather Insights Hub is a responsive web application for interactive weather data visualization and analysis." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "TCE Weather  Portal" },
+      { name: "twitter:description", content: "Weather Insights Hub is a responsive web application for interactive weather data visualization and analysis." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/343f8443-ec19-4fe8-94a4-edcea4bdb8da/id-preview-d3a61695--32822e5d-be2e-4102-b79f-4d739c991be6.lovable.app-1778835902871.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/343f8443-ec19-4fe8-94a4-edcea4bdb8da/id-preview-d3a61695--32822e5d-be2e-4102-b79f-4d739c991be6.lovable.app-1778835902871.png" },
     ],
     links: [
       {
