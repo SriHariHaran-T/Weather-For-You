@@ -33,7 +33,8 @@ export function DataTable({ rows }: { rows: WeatherRow[] }) {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const slice = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const start = (safePage - 1) * pageSize;
+  const slice = filtered.slice(start, Math.min(start + pageSize, start + RENDER_CAP));
 
   const toggleSort = (key: SortKey) =>
     setSort((s) => ({ key, dir: s.key === key && s.dir === "asc" ? "desc" : "asc" }));
