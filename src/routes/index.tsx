@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useDeferredValue, useMemo, useState } from "react";
 import {
   Thermometer,
   ThermometerSun,
@@ -16,8 +16,8 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
+import { useWeather } from "@/hooks/use-weather";
 import {
-  generateWeatherData,
   buildHistogram,
   buildSeasonal,
   downsampleRows,
@@ -32,7 +32,6 @@ import { UploadArea } from "@/components/dashboard/UploadArea";
 import { LiveWeatherCard } from "@/components/dashboard/LiveWeather";
 import { CardSkeleton, ChartSkeleton } from "@/components/dashboard/Skeletons";
 
-// Lazy-load chart bundle (recharts) so first paint stays fast
 const Charts = {
   TempLineChart: lazy(() =>
     import("@/components/dashboard/Charts").then((m) => ({ default: m.TempLineChart })),
@@ -58,12 +57,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Interactive weather data visualization dashboard with live weather, charts, histograms and CSV upload.",
+          "Real-time weather analytics dashboard with live charts, distributions, and CSV upload.",
       },
       { property: "og:title", content: "Weather Dataset Analysis" },
       {
         property: "og:description",
-        content: "Interactive weather data visualization dashboard.",
+        content: "Real-time weather analytics dashboard.",
       },
     ],
   }),
@@ -72,21 +71,20 @@ export const Route = createFileRoute("/")({
 
 function Dashboard() {
   const { theme, toggle } = useTheme();
-  const [rows, setRows] = useState<WeatherRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const weather = useWeather();
+  const [uploadedRows, setUploadedRows] = useState<WeatherRow[] | null>(null);
   const [active, setActive] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Defer the heavy rows value used by charts so typing/upload feels snappy
-  const deferredRows = useDeferredValue(rows);
+  // Live forecast drives the dashboard unless the user uploads a CSV
+  const liveRows = weather.data?.forecast ?? [];
+  const rows = uploadedRows ?? liveRows;
+  const usingUpload = uploadedRows !== null;
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setRows(generateWeatherData(60));
-      setLoading(false);
-    }, 400);
-    return () => clearTimeout(t);
-  }, []);
+  const loading =
+    !usingUpload && (weather.status === "locating" || weather.status === "loading") && !rows.length;
+
+  const deferredRows = useDeferredValue(rows);
 
   const stats = useMemo(() => {
     if (!rows.length) return null;
@@ -103,19 +101,21 @@ function Dashboard() {
     return { max, min, avg: tSum / rows.length, hum: hSum / rows.length };
   }, [rows]);
 
-  // Chart-side derivations all run against the deferred (debounced) value
   const chartRows = useMemo(() => downsampleRows(deferredRows), [deferredRows]);
   const histogram = useMemo(() => buildHistogram(deferredRows), [deferredRows]);
   const seasonal = useMemo(() => buildSeasonal(deferredRows), [deferredRows]);
   const downsampled = deferredRows.length > CHART_MAX_POINTS;
 
   const reset = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setRows(generateWeatherData(60));
-      setLoading(false);
-    }, 300);
+    setUploadedRows(null);
+    void weather.refresh();
   };
+
+  const datasetLabel = usingUpload
+    ? "CSV upload"
+    : weather.data
+      ? `${weather.data.current.city} · live forecast`
+      : "Loading…";
 
   return (
     <div className="min-h-screen flex w-full">
@@ -136,7 +136,6 @@ function Dashboard() {
       )}
 
       <main className="flex-1 min-w-0">
-        {/* Header */}
         <header className="sticky top-0 z-20 px-4 lg:px-6 pt-4">
           <div className="glass-strong rounded-2xl px-4 py-3 flex items-center gap-3">
             <Button
@@ -155,20 +154,30 @@ function Dashboard() {
                 Interactive weather data visualization dashboard
               </p>
             </div>
-            <Button variant="ghost" size="icon" onClick={reset} className="rounded-xl" title="Reset demo data">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={reset}
+              className="rounded-xl"
+              title="Refresh live weather"
+            >
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={toggle} className="rounded-xl" title="Toggle theme">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggle}
+              className="rounded-xl"
+              title="Toggle theme"
+            >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
           </div>
         </header>
 
         <div className="px-4 lg:px-6 py-6 space-y-6">
-          {/* Live weather */}
-          <LiveWeatherCard />
+          <LiveWeatherCard ctx={weather} />
 
-          {/* Hero */}
           <section className="glass-strong rounded-3xl p-6 sm:p-8 relative overflow-hidden">
             <div className="absolute inset-0 opacity-60 pointer-events-none">
               <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full gradient-primary blur-3xl opacity-30" />
@@ -177,7 +186,12 @@ function Dashboard() {
             <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
               <div>
                 <div className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full glass mb-3">
-                  <Sparkles className="h-3 w-3" /> Dataset · {rows.length.toLocaleString() || 60} rows
+                  <Sparkles className="h-3 w-3" /> Dataset · {datasetLabel}
+                  {rows.length > 0 && (
+                    <span className="ml-1 text-muted-foreground">
+                      · {rows.length.toLocaleString()} points
+                    </span>
+                  )}
                   {downsampled && (
                     <span className="ml-1 text-muted-foreground">
                       · charts downsampled to {CHART_MAX_POINTS}
@@ -185,51 +199,96 @@ function Dashboard() {
                   )}
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  Explore your weather data, <span className="text-gradient">beautifully</span>
+                  Real-time weather, <span className="text-gradient">beautifully analyzed</span>
                 </h2>
                 <p className="text-sm text-muted-foreground mt-2 max-w-xl">
-                  Charts, distributions and trends — all in one glassy dashboard. Upload a CSV
-                  (up to 10MB) to analyze your own readings.
+                  Charts driven by live OpenWeatherMap forecast data for your location. Upload a CSV
+                  to analyze your own readings instead.
                 </p>
+                {usingUpload && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => setUploadedRows(null)}
+                    className="px-0 mt-1 h-auto"
+                  >
+                    Switch back to live data
+                  </Button>
+                )}
               </div>
             </div>
           </section>
 
-          {/* Stats */}
           <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {loading || !stats ? (
               <>
-                <CardSkeleton /><CardSkeleton /><CardSkeleton /><CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
               </>
             ) : (
               <>
-                <StatCard label="Highest Temperature" value={stats.max.toFixed(1)} unit="°C" icon={ThermometerSun} gradient="warm" trend="Peak across the period" />
-                <StatCard label="Average Temperature" value={stats.avg.toFixed(1)} unit="°C" icon={Thermometer} gradient="primary" trend="Mean of all readings" />
-                <StatCard label="Lowest Temperature" value={stats.min.toFixed(1)} unit="°C" icon={ThermometerSnowflake} gradient="cool" trend="Coldest day recorded" />
-                <StatCard label="Average Humidity" value={stats.hum.toFixed(0)} unit="%" icon={Droplets} gradient="mint" trend="Mean relative humidity" />
+                <StatCard
+                  label="Highest Temperature"
+                  value={stats.max.toFixed(1)}
+                  unit="°C"
+                  icon={ThermometerSun}
+                  gradient="warm"
+                  trend="Peak across the period"
+                />
+                <StatCard
+                  label="Average Temperature"
+                  value={stats.avg.toFixed(1)}
+                  unit="°C"
+                  icon={Thermometer}
+                  gradient="primary"
+                  trend="Mean of all readings"
+                />
+                <StatCard
+                  label="Lowest Temperature"
+                  value={stats.min.toFixed(1)}
+                  unit="°C"
+                  icon={ThermometerSnowflake}
+                  gradient="cool"
+                  trend="Coldest forecast slot"
+                />
+                <StatCard
+                  label="Average Humidity"
+                  value={stats.hum.toFixed(0)}
+                  unit="%"
+                  icon={Droplets}
+                  gradient="mint"
+                  trend="Mean relative humidity"
+                />
               </>
             )}
           </section>
 
-          {/* Charts (lazy + downsampled) */}
           {loading ? (
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ChartSkeleton /><ChartSkeleton /><ChartSkeleton /><ChartSkeleton />
+              <ChartSkeleton />
+              <ChartSkeleton />
+              <ChartSkeleton />
+              <ChartSkeleton />
             </section>
           ) : rows.length === 0 ? (
-            <EmptyState onUploaded={setRows} />
+            <EmptyState onUploaded={setUploadedRows} />
           ) : (
             <Suspense
               fallback={
                 <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <ChartSkeleton /><ChartSkeleton /><ChartSkeleton /><ChartSkeleton />
+                  <ChartSkeleton />
+                  <ChartSkeleton />
+                  <ChartSkeleton />
+                  <ChartSkeleton />
                 </section>
               }
             >
               <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <ChartCard
                   title="Temperature trend"
-                  description={`Daily temperature changes${downsampled ? " (averaged buckets)" : ""}`}
+                  description={`Forecast temperature${downsampled ? " (averaged buckets)" : ""}`}
                   exportName="temperature-trend"
                 >
                   <Charts.TempLineChart data={chartRows} />
@@ -237,7 +296,7 @@ function Dashboard() {
 
                 <ChartCard
                   title="Temperature distribution"
-                  description="How frequently each temperature range occurred"
+                  description="How frequently each temperature range appears"
                   exportName="temperature-histogram"
                 >
                   <Charts.TempHistogram data={histogram} />
@@ -253,7 +312,7 @@ function Dashboard() {
 
                 <ChartCard
                   title="Daily temperature"
-                  description="Last 14 buckets"
+                  description="Last 14 forecast points"
                   exportName="daily-temperature"
                 >
                   <Charts.DailyBarChart data={chartRows} />
@@ -268,20 +327,15 @@ function Dashboard() {
                     <Charts.SeasonalPie data={seasonal} />
                   </ChartCard>
                   <div className="lg:col-span-2">
-                    <UploadArea onLoaded={setRows} />
+                    <UploadArea onLoaded={setUploadedRows} />
                   </div>
                 </div>
               </section>
             </Suspense>
           )}
 
-          {/* Table */}
           <section>
-            {loading ? (
-              <ChartSkeleton />
-            ) : rows.length === 0 ? null : (
-              <DataTable rows={rows} />
-            )}
+            {loading ? <ChartSkeleton /> : rows.length === 0 ? null : <DataTable rows={rows} />}
           </section>
 
           <footer className="text-center text-xs text-muted-foreground py-6">
@@ -303,7 +357,7 @@ function EmptyState({ onUploaded }: { onUploaded: (rows: WeatherRow[]) => void }
       </div>
       <h3 className="font-semibold text-lg">No dataset loaded</h3>
       <p className="text-sm text-muted-foreground mb-5">
-        Upload a CSV to start analyzing your weather data.
+        Live weather is unavailable. Upload a CSV to start analyzing your weather data.
       </p>
       <div className="max-w-md mx-auto">
         <UploadArea onLoaded={onUploaded} />
