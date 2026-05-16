@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -15,7 +16,6 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { useMemo } from "react";
 import type { WeatherRow } from "@/lib/weather-data";
 import { GlassTooltip } from "./ChartTooltip";
 
@@ -119,10 +119,17 @@ export function DailyBarChart({ data }: { data: WeatherRow[] }) {
 export function SeasonalPie({ data }: { data: { name: string; value: number }[] }) {
   const colors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
   const total = data.reduce((s, d) => s + d.value, 0);
-  const isMobile = useMemo(
-    () => (typeof window !== "undefined" ? window.matchMedia("(max-width: 640px)").matches : false),
-    [],
-  );
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 640px)");
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
