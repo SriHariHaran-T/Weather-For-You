@@ -80,7 +80,7 @@ export function LiveWeatherCard() {
       <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
         <div className="flex-1 min-w-0">
           <div className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full glass mb-3">
-            <MapPin className="h-3 w-3" /> Live · your location
+            <MapPin className="h-3 w-3" /> Live · {data?.source === "ip" ? "approx. location" : "your location"}
           </div>
 
           {status === "locating" || status === "loading" ? (
