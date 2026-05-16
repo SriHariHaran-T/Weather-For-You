@@ -18,18 +18,24 @@ import type { useWeather } from "@/hooks/use-weather";
 type WeatherCtx = ReturnType<typeof useWeather>;
 
 export function LiveWeatherCard({ ctx }: { ctx: WeatherCtx }) {
-  const { status, data, error, needsManual, DEFAULT_CITY, refresh, loadFromCity } = ctx;
+  const {
+    status,
+    data,
+    error,
+    needsManual,
+    DEFAULT_CITY,
+    refresh,
+    loadFromCity,
+    retryLocation,
+    locationLoading,
+    locationError,
+  } = ctx;
   const [city, setCity] = useState("");
 
   const current = data?.current;
   const iconUrl = current ? `https://openweathermap.org/img/wn/${current.icon}@4x.png` : "";
   const busy = status === "locating" || status === "loading";
-  const sourceLabel =
-    current?.source === "ip"
-      ? "approx. location"
-      : current?.source === "city"
-        ? "manual city"
-        : "your location";
+  const sourceLabel = current?.source === "city" ? "manual city" : "your location";
 
   return (
     <section className="glass-strong rounded-3xl p-6 sm:p-7 relative overflow-hidden animate-fade-in">
@@ -48,7 +54,9 @@ export function LiveWeatherCard({ ctx }: { ctx: WeatherCtx }) {
             <div className="flex items-center gap-3 py-2">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">
-                {status === "locating" ? "Detecting your location…" : "Fetching live weather…"}
+                {status === "locating" || locationLoading
+                  ? "Detecting your location…"
+                  : "Fetching live weather…"}
               </p>
             </div>
           ) : status === "error" && !current ? (
@@ -58,7 +66,28 @@ export function LiveWeatherCard({ ctx }: { ctx: WeatherCtx }) {
               </div>
               <div>
                 <p className="font-semibold">Live weather unavailable</p>
-                <p className="text-sm text-muted-foreground">{error}</p>
+                <p className="text-sm text-muted-foreground">{locationError ?? error}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={retryLocation}
+                    disabled={busy}
+                    className="rounded-xl glass"
+                  >
+                    Retry location
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void loadFromCity(DEFAULT_CITY)}
+                    disabled={busy}
+                    className="rounded-xl"
+                  >
+                    Use {DEFAULT_CITY}
+                  </Button>
+                </div>
               </div>
             </div>
           ) : current ? (
@@ -130,27 +159,34 @@ export function LiveWeatherCard({ ctx }: { ctx: WeatherCtx }) {
       </div>
 
       {needsManual && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const c = city.trim() || DEFAULT_CITY;
-            void loadFromCity(c);
-          }}
-          className="relative mt-5 flex gap-2 max-w-md"
-        >
-          <div className="flex-1 relative">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder={`Search city (default: ${DEFAULT_CITY})`}
-              className="pl-9 rounded-xl glass"
-            />
-          </div>
-          <Button type="submit" disabled={busy} className="rounded-xl">
-            Search
-          </Button>
-        </form>
+        <div className="mt-5 space-y-3">
+          {locationError && (
+            <p className="text-sm text-muted-foreground">
+              Enable location access to use your current weather, or search by city below.
+            </p>
+          )}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const c = city.trim() || DEFAULT_CITY;
+              void loadFromCity(c);
+            }}
+            className="relative flex gap-2 max-w-md"
+          >
+            <div className="flex-1 relative">
+              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder={`Search city (default: ${DEFAULT_CITY})`}
+                className="pl-9 rounded-xl glass"
+              />
+            </div>
+            <Button type="submit" disabled={busy} className="rounded-xl">
+              Search
+            </Button>
+          </form>
+        </div>
       )}
     </section>
   );
