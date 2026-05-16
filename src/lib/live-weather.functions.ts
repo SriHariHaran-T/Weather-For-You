@@ -14,7 +14,7 @@ export type LiveWeather = {
   icon: string;
   sunrise: number;
   sunset: number;
-  source: "geolocation" | "ip" | "city";
+  source: "geolocation" | "city";
   lat: number;
   lon: number;
 };
@@ -25,22 +25,6 @@ export type WeatherBundle = {
 };
 
 const API_KEY_FALLBACK = "69755718a4daf50dfaa1d7dffc3f336b";
-
-async function resolveIpLocation(): Promise<{ lat: number; lon: number } | null> {
-  try {
-    const res = await fetch("https://ipapi.co/json/", {
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) return null;
-    const j: any = await res.json();
-    if (typeof j?.latitude === "number" && typeof j?.longitude === "number") {
-      return { lat: j.latitude, lon: j.longitude };
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
 
 function seasonOf(monthIdx: number): WeatherRow["season"] {
   if ([11, 0, 1].includes(monthIdx)) return "Winter";
@@ -111,35 +95,43 @@ export const fetchLiveWeather = createServerFn({ method: "POST" })
       source = "city";
     }
     if (lat === undefined || lon === undefined) {
-      const ip = await resolveIpLocation();
-      if (!ip) throw new Error("Couldn't determine your location automatically.");
-      lat = ip.lat;
-      lon = ip.lon;
-      source = "ip";
+      if (data?.city) {
+        const g = await geocodeCity(data.city, key);
+        lat = g.lat;
+        lon = g.lon;
+        source = "city";
+      } else {
+        throw new Error("Missing location coordinates. Enable location access or search by city.");
+      }
     }
 
-    const [j, forecast] = await Promise.all([
-      fetchCurrent(lat, lon, key),
-      fetchForecast(lat, lon, key),
-    ]);
+    try {
+      const [j, forecast] = await Promise.all([
+        fetchCurrent(lat, lon, key),
+        fetchForecast(lat, lon, key),
+      ]);
 
-    const current: LiveWeather = {
-      city: j.name ?? data?.city ?? "Unknown",
-      country: j.sys?.country ?? "",
-      temp: Math.round(j.main?.temp ?? 0),
-      feelsLike: Math.round(j.main?.feels_like ?? 0),
-      humidity: Math.round(j.main?.humidity ?? 0),
-      pressure: Math.round(j.main?.pressure ?? 0),
-      wind: Math.round((j.wind?.speed ?? 0) * 3.6),
-      condition: j.weather?.[0]?.main ?? "—",
-      description: j.weather?.[0]?.description ?? "",
-      icon: j.weather?.[0]?.icon ?? "01d",
-      sunrise: j.sys?.sunrise ?? 0,
-      sunset: j.sys?.sunset ?? 0,
-      source,
-      lat,
-      lon,
-    };
+      const current: LiveWeather = {
+        city: j.name ?? data?.city ?? "Unknown",
+        country: j.sys?.country ?? "",
+        temp: Math.round(j.main?.temp ?? 0),
+        feelsLike: Math.round(j.main?.feels_like ?? 0),
+        humidity: Math.round(j.main?.humidity ?? 0),
+        pressure: Math.round(j.main?.pressure ?? 0),
+        wind: Math.round((j.wind?.speed ?? 0) * 3.6),
+        condition: j.weather?.[0]?.main ?? "—",
+        description: j.weather?.[0]?.description ?? "",
+        icon: j.weather?.[0]?.icon ?? "01d",
+        sunrise: j.sys?.sunrise ?? 0,
+        sunset: j.sys?.sunset ?? 0,
+        source,
+        lat,
+        lon,
+      };
 
-    return { current, forecast };
+      return { current, forecast };
+    } catch (error) {
+      console.error("Failed to fetch live weather:", error);
+      throw new Error("Unable to load live weather data right now.");
+    }
   });

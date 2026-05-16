@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -118,23 +119,35 @@ export function DailyBarChart({ data }: { data: WeatherRow[] }) {
 export function SeasonalPie({ data }: { data: { name: string; value: number }[] }) {
   const colors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
   const total = data.reduce((s, d) => s + d.value, 0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 640px)");
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
         <Tooltip content={<GlassTooltip />} />
-        <Legend wrapperStyle={{ fontSize: 11 }} />
+        <Legend wrapperStyle={{ fontSize: isMobile ? 10 : 11 }} />
         <Pie
           data={data}
           dataKey="value"
           nameKey="name"
           cx="50%"
           cy="50%"
-          innerRadius={55}
-          outerRadius={90}
+          innerRadius={isMobile ? 42 : 55}
+          outerRadius={isMobile ? 72 : 90}
           paddingAngle={3}
-          label={({ name, value }) =>
-            `${name} ${total ? ((Number(value) / total) * 100).toFixed(0) : 0}%`
-          }
+          label={({ name, value }) => {
+            const percent = total ? ((Number(value) / total) * 100).toFixed(0) : 0;
+            return isMobile ? `${percent}%` : `${name} ${percent}%`;
+          }}
           labelLine={false}
           animationDuration={900}
         >
