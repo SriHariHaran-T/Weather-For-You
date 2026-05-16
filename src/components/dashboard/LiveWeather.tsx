@@ -21,14 +21,25 @@ export function LiveWeatherCard() {
   const [error, setError] = useState<string>("");
   const fetchWeather = useServerFn(fetchLiveWeather);
 
-  const load = useCallback(() => {
-    if (!("geolocation" in navigator)) {
+  const loadFromIP = useCallback(async () => {
+    setStatus("loading");
+    try {
+      const w = await fetchWeather({ data: {} });
+      setData(w);
+      setStatus("ready");
+    } catch (e: any) {
       setStatus("error");
-      setError("Geolocation isn't supported by this browser.");
+      setError(e?.message || "Failed to fetch weather.");
+    }
+  }, [fetchWeather]);
+
+  const load = useCallback(() => {
+    setError("");
+    if (!("geolocation" in navigator)) {
+      void loadFromIP();
       return;
     }
     setStatus("locating");
-    setError("");
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         setStatus("loading");
@@ -39,21 +50,18 @@ export function LiveWeatherCard() {
           setData(w);
           setStatus("ready");
         } catch (e: any) {
-          setStatus("error");
-          setError(e?.message || "Failed to fetch weather.");
+          // fall back to IP-based lookup on any API error
+          await loadFromIP();
+          if (e?.message) setError(e.message);
         }
       },
-      (err) => {
-        setStatus("error");
-        setError(
-          err.code === err.PERMISSION_DENIED
-            ? "Location permission denied. Allow location access to see live weather."
-            : "Couldn't determine your location.",
-        );
+      () => {
+        // permission denied or unavailable → use IP-based lookup
+        void loadFromIP();
       },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60 * 1000 },
     );
-  }, [fetchWeather]);
+  }, [fetchWeather, loadFromIP]);
 
   useEffect(() => {
     load();
