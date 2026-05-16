@@ -1,77 +1,38 @@
-import { useCallback, useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import {
   MapPin,
   RefreshCw,
   Droplets,
   Wind,
   Thermometer,
+  Gauge,
   AlertCircle,
   Loader2,
   CloudOff,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchLiveWeather, type LiveWeather } from "@/lib/live-weather.functions";
+import { Input } from "@/components/ui/input";
+import type { useWeather } from "@/hooks/use-weather";
 
-type Status = "idle" | "locating" | "loading" | "ready" | "error";
+type WeatherCtx = ReturnType<typeof useWeather>;
 
-export function LiveWeatherCard() {
-  const [status, setStatus] = useState<Status>("idle");
-  const [data, setData] = useState<LiveWeather | null>(null);
-  const [error, setError] = useState<string>("");
-  const fetchWeather = useServerFn(fetchLiveWeather);
+export function LiveWeatherCard({ ctx }: { ctx: WeatherCtx }) {
+  const { status, data, error, needsManual, DEFAULT_CITY, refresh, loadFromCity } = ctx;
+  const [city, setCity] = useState("");
 
-  const loadFromIP = useCallback(async () => {
-    setStatus("loading");
-    try {
-      const w = await fetchWeather({ data: {} });
-      setData(w);
-      setStatus("ready");
-    } catch (e: any) {
-      setStatus("error");
-      setError(e?.message || "Failed to fetch weather.");
-    }
-  }, [fetchWeather]);
-
-  const load = useCallback(() => {
-    setError("");
-    if (!("geolocation" in navigator)) {
-      void loadFromIP();
-      return;
-    }
-    setStatus("locating");
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        setStatus("loading");
-        try {
-          const w = await fetchWeather({
-            data: { lat: pos.coords.latitude, lon: pos.coords.longitude },
-          });
-          setData(w);
-          setStatus("ready");
-        } catch (e: any) {
-          // fall back to IP-based lookup on any API error
-          await loadFromIP();
-          if (e?.message) setError(e.message);
-        }
-      },
-      () => {
-        // permission denied or unavailable → use IP-based lookup
-        void loadFromIP();
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60 * 1000 },
-    );
-  }, [fetchWeather, loadFromIP]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const iconUrl = data ? `https://openweathermap.org/img/wn/${data.icon}@4x.png` : "";
+  const current = data?.current;
+  const iconUrl = current ? `https://openweathermap.org/img/wn/${current.icon}@4x.png` : "";
+  const busy = status === "locating" || status === "loading";
+  const sourceLabel =
+    current?.source === "ip"
+      ? "approx. location"
+      : current?.source === "city"
+        ? "manual city"
+        : "your location";
 
   return (
     <section className="glass-strong rounded-3xl p-6 sm:p-7 relative overflow-hidden animate-fade-in">
-      {/* gradient backdrop */}
       <div className="absolute inset-0 pointer-events-none opacity-90">
         <div className="absolute -top-24 -left-16 w-80 h-80 rounded-full gradient-cool blur-3xl opacity-40" />
         <div className="absolute -bottom-24 -right-12 w-80 h-80 rounded-full gradient-primary blur-3xl opacity-40" />
@@ -80,17 +41,17 @@ export function LiveWeatherCard() {
       <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
         <div className="flex-1 min-w-0">
           <div className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full glass mb-3">
-            <MapPin className="h-3 w-3" /> Live · {data?.source === "ip" ? "approx. location" : "your location"}
+            <MapPin className="h-3 w-3" /> Live · {sourceLabel}
           </div>
 
-          {status === "locating" || status === "loading" ? (
+          {busy && !current ? (
             <div className="flex items-center gap-3 py-2">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">
                 {status === "locating" ? "Detecting your location…" : "Fetching live weather…"}
               </p>
             </div>
-          ) : status === "error" ? (
+          ) : status === "error" && !current ? (
             <div className="flex items-start gap-3 py-2 max-w-md">
               <div className="rounded-xl bg-destructive/15 p-2">
                 <AlertCircle className="h-5 w-5 text-destructive" />
@@ -100,22 +61,24 @@ export function LiveWeatherCard() {
                 <p className="text-sm text-muted-foreground">{error}</p>
               </div>
             </div>
-          ) : data ? (
+          ) : current ? (
             <>
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
-                {data.city}
-                {data.country && (
-                  <span className="text-muted-foreground font-medium">, {data.country}</span>
+                {current.city}
+                {current.country && (
+                  <span className="text-muted-foreground font-medium">, {current.country}</span>
                 )}
               </h2>
-              <p className="text-sm text-muted-foreground capitalize mt-0.5">{data.description}</p>
+              <p className="text-sm text-muted-foreground capitalize mt-0.5">
+                {current.description}
+              </p>
 
               <div className="flex items-end gap-4 mt-4">
                 <div className="flex items-center">
                   {iconUrl && (
                     <img
                       src={iconUrl}
-                      alt={data.condition}
+                      alt={current.condition}
                       width={96}
                       height={96}
                       className="h-24 w-24 -ml-3 drop-shadow-lg animate-fade-in"
@@ -124,12 +87,12 @@ export function LiveWeatherCard() {
                   <div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-5xl font-bold tracking-tight text-gradient">
-                        {data.temp}
+                        {current.temp}
                       </span>
                       <span className="text-xl text-muted-foreground font-semibold">°C</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Feels like {data.feelsLike}°C · {data.condition}
+                      Feels like {current.feelsLike}°C · {current.condition}
                     </p>
                   </div>
                 </div>
@@ -143,30 +106,52 @@ export function LiveWeatherCard() {
           )}
         </div>
 
-        {/* Right column: stats + refresh */}
         <div className="flex flex-col gap-3 sm:items-end">
           <Button
             variant="outline"
             size="sm"
-            onClick={load}
-            disabled={status === "locating" || status === "loading"}
+            onClick={refresh}
+            disabled={busy}
             className="rounded-xl glass gap-2"
           >
-            <RefreshCw
-              className={`h-4 w-4 ${status === "locating" || status === "loading" ? "animate-spin" : ""}`}
-            />
+            <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} />
             Refresh
           </Button>
 
-          {data && status === "ready" && (
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full sm:w-auto">
-              <Stat icon={Droplets} label="Humidity" value={`${data.humidity}%`} />
-              <Stat icon={Wind} label="Wind" value={`${data.wind} km/h`} />
-              <Stat icon={Thermometer} label="Feels" value={`${data.feelsLike}°`} />
+          {current && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full sm:w-auto">
+              <Stat icon={Droplets} label="Humidity" value={`${current.humidity}%`} />
+              <Stat icon={Wind} label="Wind" value={`${current.wind} km/h`} />
+              <Stat icon={Gauge} label="Pressure" value={`${current.pressure} hPa`} />
+              <Stat icon={Thermometer} label="Feels" value={`${current.feelsLike}°`} />
             </div>
           )}
         </div>
       </div>
+
+      {needsManual && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const c = city.trim() || DEFAULT_CITY;
+            void loadFromCity(c);
+          }}
+          className="relative mt-5 flex gap-2 max-w-md"
+        >
+          <div className="flex-1 relative">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder={`Search city (default: ${DEFAULT_CITY})`}
+              className="pl-9 rounded-xl glass"
+            />
+          </div>
+          <Button type="submit" disabled={busy} className="rounded-xl">
+            Search
+          </Button>
+        </form>
+      )}
     </section>
   );
 }
