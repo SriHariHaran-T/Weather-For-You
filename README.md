@@ -99,6 +99,12 @@ Fully optimized for:
 
 ---
 
+# 🌍 Live Website
+
+🌐 https://weatherforyou.lovable.app/
+
+---
+
 # 🤝 Credits
 
 Built using:
