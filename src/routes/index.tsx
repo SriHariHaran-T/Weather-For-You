@@ -286,7 +286,7 @@ function Dashboard() {
                 </section>
               }
             >
-              <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <section id="section-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-4 scroll-mt-24">
                 <ChartCard
                   title="Temperature trend"
                   description={`Forecast temperature${downsampled ? " (averaged buckets)" : ""}`}
