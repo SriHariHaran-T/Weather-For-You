@@ -220,7 +220,7 @@ function Dashboard() {
             </div>
           </section>
 
-          <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <section id="section-analytics" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 scroll-mt-24">
             {loading || !stats ? (
               <>
                 <CardSkeleton />
