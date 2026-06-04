@@ -1,4 +1,4 @@
-import { LayoutDashboard, BarChart3, Database, LineChart, Settings, CloudSun } from "lucide-react";
+import { LayoutDashboard, BarChart3, Database, LineChart, CloudSun } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -6,7 +6,6 @@ const items = [
   { id: "charts", label: "Charts", icon: BarChart3 },
   { id: "dataset", label: "Dataset", icon: Database },
   { id: "analytics", label: "Analytics", icon: LineChart },
-  { id: "settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar({
@@ -18,6 +17,15 @@ export function Sidebar({
   onChange: (id: string) => void;
   open: boolean;
 }) {
+  const handleClick = (id: string) => {
+    onChange(id);
+    if (typeof window === "undefined") return;
+    const el = document.getElementById(`section-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
     <aside
       className={cn(
@@ -44,7 +52,7 @@ export function Sidebar({
             return (
               <button
                 key={it.id}
-                onClick={() => onChange(it.id)}
+                onClick={() => handleClick(it.id)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                   isActive

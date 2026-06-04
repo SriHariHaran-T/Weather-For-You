@@ -176,6 +176,7 @@ function Dashboard() {
         </header>
 
         <div className="px-4 lg:px-6 py-6 space-y-6">
+          <div id="section-dashboard" className="scroll-mt-24" />
           <LiveWeatherCard ctx={weather} />
 
           <section className="glass-strong rounded-3xl p-6 sm:p-8 relative overflow-hidden">
@@ -219,7 +220,7 @@ function Dashboard() {
             </div>
           </section>
 
-          <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <section id="section-analytics" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 scroll-mt-24">
             {loading || !stats ? (
               <>
                 <CardSkeleton />
@@ -285,7 +286,7 @@ function Dashboard() {
                 </section>
               }
             >
-              <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <section id="section-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-4 scroll-mt-24">
                 <ChartCard
                   title="Temperature trend"
                   description={`Forecast temperature${downsampled ? " (averaged buckets)" : ""}`}
@@ -334,7 +335,7 @@ function Dashboard() {
             </Suspense>
           )}
 
-          <section>
+          <section id="section-dataset" className="scroll-mt-24">
             {loading ? <ChartSkeleton /> : rows.length === 0 ? null : <DataTable rows={rows} />}
           </section>
 
