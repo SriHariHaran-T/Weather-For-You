@@ -335,7 +335,7 @@ function Dashboard() {
             </Suspense>
           )}
 
-          <section>
+          <section id="section-dataset" className="scroll-mt-24">
             {loading ? <ChartSkeleton /> : rows.length === 0 ? null : <DataTable rows={rows} />}
           </section>
 
