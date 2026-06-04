@@ -176,6 +176,7 @@ function Dashboard() {
         </header>
 
         <div className="px-4 lg:px-6 py-6 space-y-6">
+          <div id="section-dashboard" />
           <LiveWeatherCard ctx={weather} />
 
           <section className="glass-strong rounded-3xl p-6 sm:p-8 relative overflow-hidden">
