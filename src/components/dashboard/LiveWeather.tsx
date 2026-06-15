@@ -24,6 +24,31 @@ import type { useWeather } from "@/hooks/use-weather";
 
 type WeatherCtx = ReturnType<typeof useWeather>;
 
+function WeatherIcon({ code, className }: { code?: string; className?: string }) {
+  if (!code) return <CloudOff className={className} />;
+  const prefix = code.slice(0, 2);
+  switch (prefix) {
+    case "01":
+      return <Sun className={className} />;
+    case "02":
+      return <CloudSun className={className} />;
+    case "03":
+    case "04":
+      return <Cloud className={className} />;
+    case "09":
+    case "10":
+      return <CloudRain className={className} />;
+    case "11":
+      return <CloudLightning className={className} />;
+    case "13":
+      return <Snowflake className={className} />;
+    case "50":
+      return <CloudFog className={className} />;
+    default:
+      return <Cloud className={className} />;
+  }
+}
+
 export function LiveWeatherCard({ ctx }: { ctx: WeatherCtx }) {
   const {
     status,
