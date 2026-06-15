@@ -144,11 +144,7 @@ export function SeasonalPie({ data }: { data: { name: string; value: number }[] 
           innerRadius={isMobile ? 42 : 55}
           outerRadius={isMobile ? 72 : 90}
           paddingAngle={3}
-          label={({ name, value }) => {
-            const percent = total ? ((Number(value) / total) * 100).toFixed(0) : 0;
-            return isMobile ? `${percent}%` : `${name} ${percent}%`;
-          }}
-          labelLine={false}
+          label={false}
           animationDuration={900}
         >
           {data.map((_, i) => (
