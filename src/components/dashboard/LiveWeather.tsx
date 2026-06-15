@@ -136,15 +136,10 @@ export function LiveWeatherCard({ ctx }: { ctx: WeatherCtx }) {
 
               <div className="flex items-end gap-4 mt-4">
                 <div className="flex items-center">
-                  {iconUrl && (
-                    <img
-                      src={iconUrl}
-                      alt={current.condition}
-                      width={96}
-                      height={96}
-                      className="h-24 w-24 -ml-3 drop-shadow-lg animate-fade-in"
-                    />
-                  )}
+                  <WeatherIcon
+                    code={current.icon}
+                    className="h-16 w-16 sm:h-20 sm:w-20 text-primary drop-shadow-lg animate-fade-in"
+                  />
                   <div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-5xl font-bold tracking-tight text-gradient">
