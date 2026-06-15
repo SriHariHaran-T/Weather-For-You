@@ -65,7 +65,6 @@ export function LiveWeatherCard({ ctx }: { ctx: WeatherCtx }) {
   const [city, setCity] = useState("");
 
   const current = data?.current;
-  const iconUrl = current ? `https://openweathermap.org/img/wn/${current.icon}@4x.png` : "";
   const busy = status === "locating" || status === "loading";
   const sourceLabel = current?.source === "city" ? "manual city" : "your location";
 
