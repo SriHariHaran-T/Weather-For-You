@@ -10,6 +10,13 @@ import {
   Loader2,
   CloudOff,
   Search,
+  Sun,
+  Cloud,
+  CloudSun,
+  CloudRain,
+  CloudLightning,
+  Snowflake,
+  CloudFog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
