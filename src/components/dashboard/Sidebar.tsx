@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 const items = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "charts", label: "Charts", icon: BarChart3 },
-  { id: "dataset", label: "Dataset", icon: Database },
   { id: "analytics", label: "Analytics", icon: LineChart },
+  { id: "dataset", label: "Dataset", icon: Database },
 ];
 
 export function Sidebar({
