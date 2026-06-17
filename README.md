@@ -1,6 +1,8 @@
+
+
 # 🌦️ WeatherForYou
 
-> Real-time weather, beautifully analyzed.
+<img width="1280" height="640" alt="repository-open-graph-template(1)" src="https://github.com/user-attachments/assets/eaba86a4-ee6a-4d15-9901-ca03c98af219" />
 
 WeatherForYou is an interactive weather analytics dashboard built for a hackathon competition at Thiagarajar College of Engineering (TCE), where the project won 🏆
 
@@ -25,7 +27,7 @@ Built using Lovable for vibe coding and rapid development, the platform combines
 
 # 📸 Preview
 
-<img width="1920" height="963" alt="chrome_RI7eOKNLCN" src="https://github.com/user-attachments/assets/340a5b7d-bb61-4b9a-97bc-d88632b2669f" />
+<img width="1905" height="963" alt="chrome_vEub4THnhe" src="https://github.com/user-attachments/assets/28233304-30e0-4fa9-b7a0-41d34be5773a" />
 
 
 ## Dashboard
@@ -35,6 +37,9 @@ Built using Lovable for vibe coding and rapid development, the platform combines
 - Dynamic chart rendering
 
 ## Charts Included
+
+<img width="1637" height="871" alt="chrome_IFglZH3okV" src="https://github.com/user-attachments/assets/1a2eb6e8-f8b1-4af4-9edb-6083732bffe0" />
+
 - Temperature Trends
 - Temperature Distribution
 - Humidity vs Temperature
@@ -73,8 +78,7 @@ Instead of creating another boring weather app, the project focuses on:
 # 🏆 Achievement
 
 🥇 Winner — TCE Hackathon Competition
-
-Built under limited time with pure hackathon energy.
+limited time with pure hackathon energy.
 
 ---
 
